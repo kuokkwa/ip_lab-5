@@ -1,48 +1,42 @@
+import express from 'express'
+import dotenv from 'dotenv';
+import jwt from 'jsonwebtoken';
+import { students } from './students.js'
+import { API_KEY } from './auth.js'
+import { login } from './users.js'
+
 console.log(`hello world`);
 
-const express = require('express')
 const app = express()
 const port = 3000
 
-app.use(express.json());
+dotenv.config();
+console.log(process.env.JWT_SECRET);
+
+app.use(express.json());;
+
+function API_Middle(req, res, next) {
+  let apiKey = req.header('authorization');
+  if (apiKey == API_KEY /* && req.path == '/students' */) {
+    next();
+  }
+  else {
+    res.status(401).send("wrong API key");
+  }
+}
+
+app.use(API_Middle);
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
 })
 
-const students = [
-    {
-        id: 1,
-        name: 'Олена',
-        mark: 77,
-    }, {
-        id: 2,
-        name: 'Сергій',
-        mark: 60,
-    }, {
-        id: 3,
-        name: 'Марія',
-        mark: 89,
-    }, {
-        id: 4,
-        name: 'Влад',
-        mark: 80,
-    }, {
-        id: 5,
-        name: 'Катерина',
-        mark: 65,
-    }, {
-        id: 6,
-        name: 'Олексій',
-        mark: 90,
-    }
-]
-
-app.get('/students',(req, res) => {
-  res.json(students)
+app.get('/students', (req, res) => {
+  req.path('/students');
+  res.json(students);
 })
 
-app.post('/students',(req, res) => {
+app.post('/students', (req, res) => {
   console.log(req.body);
   res.send("ok");
 
@@ -53,37 +47,61 @@ app.post('/students',(req, res) => {
       mark: req.body.mark
     }
   )
-})
+}
+)
 
-app.put('/students/id/:id',(req,res) => {
-
+app.put('/students/id/:id', (req, res) => {
   console.log(req.params.id);
 
   let foundStudent = students.find(student => student.id == req.params.id);
 
-  if(foundStudent === undefined){
+  if (foundStudent === undefined) {
     res.status(404).send("not found");
     return;
   }
 
   foundStudent.mark = req.body.mark;
   res.send('updated');
-})
+}
+)
 
-app.delete('/students/id/:id',(req,res) => {
-
+app.delete('/students/id/:id', (req, res) => {
   console.log(req.params.id);
 
   let foundStudentIndex = students.findIndex(student => student.id == req.params.id);
-  
-  if(foundStudentIndex >= 0){
+
+  if (foundStudentIndex >= 0) {
     students.splice(foundStudentIndex);
     res.send("deleted")
-  }else{
+  } else {
     res.status(404).send("not found");
     return;
   }
+}
+)
 
+app.post('/users/login',(req,res) => {
+  let jwtKey = login(req.body.username, req.body.password);
+
+  if (jwtKey){
+    res.json({jwtKey})
+  }else{
+    res.status(404).send('wrong auth');
+  }
+})
+
+app.get('/profile',(req,res) => {
+  let key = req.header('authorization');
+  let data = jwt.verify(key.slice(7).process.env.JWT_SECRET);
+  console.log(data);
+
+  res.send('okaaay');
+
+  if(data){
+    let userId = data.id;
+  }else{
+    res.status(401).send('wrong profile auth');
+  }
 })
 
 app.listen(port, () => {
